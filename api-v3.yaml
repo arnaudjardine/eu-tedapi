@@ -190,6 +190,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TedAppsErrorReponse'
+  /v3/config/sdk-versions:
+    get:
+      tags:
+        - Developer
+      summary: Return version-range.json
+      description: Return content of the 'version-range.json' file as a JSON response body
+      operationId: sdk-range
+      responses:
+        "401":
+          description: |-
+            Possible issues:
+            - Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TedAppsErrorReponse'
+        "403":
+          description: |-
+            Possible issues:
+            - Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TedAppsErrorReponse'
+        "200":
+          description: The information on accepted SDK versions is returned.
+          content:
+            application/json: { }
   /v3/notices/render:
     post:
       tags:
@@ -238,6 +266,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TedAppsErrorReponse'
+  /v3/notices/render-async:
+    post:
+      tags:
+        - Visualization
+      summary: Get HTML or PDF rendering of a notice sent in the request body.
+      operationId: renderWithCallback
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoticeRenderAsyncRequest'
+        required: true
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                Bad Request:
+                  description: Invalid format
+                  value:
+                    errorCode: 400
+                    message: "Invalid 'format' parameter value. Possible values are:\
+                        \ [PDF, HTML]."
+                    timestamp: 2023-01-01T00:00:00+01:00
+        "200":
+          description: OK
+          content:
+            text/html:
+              examples:
+                get HTML notice:
+                  description: The HTML rendering of the notice
+                  value: |-
+                    <!DOCTYPE html>
+                    <html lang="en">
+                      <body>
+                        <div class="content">
+                          <div class="h2" id="section1">1 <span label-id="auxiliary|text|buyer">Buyer</span>
+                          </div>
+                        </div>
+                      </body>
+                    </html>
+            application/pdf:
+              examples:
+                get PDF notice:
+                  description: The PDF rendering of the notice
+        "403":
+          description: Forbidden
+
   /v3/notices/convert:
     post:
       tags:
@@ -274,7 +351,7 @@ paths:
         '500':
           description: |-
             Possible issues:
-            - The provided TED API key cannot be currently validated.
+            - The provided TED API key cannot be currently validated.vers
   /v3/api-keys/{token}/renew:
     post:
       tags:
@@ -319,7 +396,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NoticeResponse'
+                $ref: '#/components/schemas/Notice'
         '400':
           description: |-
             Possible issues:
@@ -409,6 +486,8 @@ paths:
               - legalBasis
               - noticeAuthor
               - expectedPublicationDate
+              - createdAt
+              - transmittedAt
         - name: sortDirection
           in: query
           description: The sort direction, ascending (ASC) or descending (DESC)
@@ -693,6 +772,65 @@ components:
           description: Render notice by displaying only the specific elements
           example: false
       description: eForms Notice Render Request
+    NoticeRenderAsyncRequest:
+      required:
+        - callbackUrl
+        - file
+        - format
+        - language
+      type: object
+      properties:
+        file:
+          type: string
+          description: XML notice encoded in base 64
+        language:
+          type: string
+          description: "Language used to render the notice\n * Notice labels are displayed\
+                \ in the specified language \n *  The content of the notice is displayed\
+                \ in the specified language when it exists in the XML notice, otherwise\
+                \ the content is displayed with the first official language of the notice"
+          enum:
+            - bg
+            - cs
+            - da
+            - de
+            - el
+            - en
+            - es
+            - et
+            - fi
+            - fr
+            - ga
+            - hu
+            - it
+            - lt
+            - lv
+            - mt
+            - nl
+            - pl
+            - pt
+            - ro
+            - sk
+            - sl
+            - sv
+            - hr
+        format:
+          type: string
+          description: Output format
+          enum:
+            - PDF
+            - HTML
+        summary:
+          type: boolean
+          description: Render notice by displaying only the specific elements
+          example: false
+        callbackUrl:
+          type: string
+          description: this URL is called to return the rendered notice instead of
+            returning it as response to the HTTP call
+        textToHighlight:
+          type: string
+      description: eForms Notice Render Request
     Notice:
       type: object
       properties:
@@ -722,6 +860,16 @@ components:
         submittedAt:
           type: string
           description: The notice submission date/time.
+          format: date-time
+          example: '2022-01-01T13:15:55.89Z'
+        createdAt:
+          type: string
+          description: The notice creation date/time.
+          format: date-time
+          example: '2022-01-01T13:15:55.89Z'
+        transmittedAt:
+          type: string
+          description: The notice transmission date/time.
           format: date-time
           example: '2022-01-01T13:15:55.89Z'
         publicationId:
@@ -908,7 +1056,7 @@ components:
           type: array
           description: the content of entities found.
           items:
-            $ref: '#/components/schemas/NoticeResponse'
+            $ref: '#/components/schemas/Notice'
       description: The information returned after a notice search.
     NoticeResponse:
       type: object
